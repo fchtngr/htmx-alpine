@@ -18,49 +18,61 @@ This extension enables seamless interoperability between HTMX and Alpine.js by a
 Add the `hx-ext="alpine-interop"` attribute to your HTMX elements. When HTMX receives a JSON response, it will look for an `hx-handle-json` attribute specifying the Alpine.js method to call.
 
 ```html
-<header>
-  <script src="https://unpkg.com/htmx.org@latest"></script>
-  <script src="https://unpkg.com/htmx-ext-alpine-interop@1.0.0/alpine-interop.js"></script>
-  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</header>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.x.x/dist/htmx.min.js"></script>
+    <script src="https://unpkg.com/htmx-ext-alpine-interop@1.x.x/alpine-interop.js"></script>
+
+    <meta name="htmx-config" content='{"selfRequestsOnly": false}' />
+</head>
 
 <body>
-  <div hx-ext="alpine-interop" x-data="{
-              posts: [],
-              postComments: {},
-              handlePosts(data, elt) {
-                  console.log('handlePosts called with response data:', data);
-                  this.posts = data;
-              },
-              handleComments(data, elt, postId) {
-                  console.log('Comments for post:', postId, data);
-                  if (data.length > 0 && postId) {
-                      this.postComments = { ...this.postComments, [postId]: data };
-                  }
-              }
-          }" x-init="console.log('Alpine scope initialized')">
-      <button hx-get="https://jsonplaceholder.typicode.com/posts" hx-trigger="click"
-          hx-handle-json="handlePosts">Click to Load Posts (Check Console)</button>
-      <div x-text="'Loaded Posts: ' + posts.length"></div>
-      <template x-for="post in posts" :key="post.id">
-          <div class="post" :id="'post-' + post.id" style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
-              <h3 x-text="post.title"></h3>
-              <p x-text="post.body"></p>
-              <button :hx-get="`https://jsonplaceholder.typicode.com/posts/${post.id}/comments`" hx-trigger="click"
-                  hx-handle-json="handleComments" :hx-handle-json-params="post.id">Load Comments</button>
-              <div x-show="postComments[post.id]" style="margin-top: 10px;">
-                  <h4>Comments:</h4>
-                  <template x-for="comment in postComments[post.id]" :key="comment.id">
-                      <div style="border-left: 2px solid #ddd; margin: 5px 0; padding-left: 10px;">
-                          <strong x-text="comment.name"></strong>
-                          <p x-text="comment.body"></p>
-                      </div>
-                  </template>
-              </div>
-          </div>
-      </template>
-  </div>
+
+    <div hx-ext="alpine-interop" x-data="{
+            posts: [],
+            postComments: {},
+            handlePosts(data, elt) { 
+                console.log('handlePosts called with response data:', data); 
+                this.posts = data;
+            },
+            handleComments(data, elt, postId) {
+                console.log('Comments for post:', postId, data);
+                if (data.length > 0 && postId) {
+                    this.postComments = { ...this.postComments, [postId]: data };
+                }
+            }
+        }" x-init="console.log('Alpine scope initialized')">
+        <button hx-get="https://jsonplaceholder.typicode.com/posts" hx-trigger="click"
+            hx-handle-json="handlePosts">Click to Load Posts (Check Console)</button>
+        <div x-text="'Loaded Posts: ' + posts.length"></div>
+        <template x-for="post in posts" :key="post.id">
+            <div class="post" :id="'post-' + post.id" style="border: 1px solid #ccc; margin: 10px; padding: 10px;">
+                <h3 x-text="post.title"></h3>
+                <p x-text="post.body"></p>
+                <button :hx-get="`https://jsonplaceholder.typicode.com/posts/${post.id}/comments`" hx-trigger="click"
+                    hx-handle-json="handleComments" :hx-handle-json-params="post.id">Load Comments</button>
+                <div x-show="postComments[post.id]" style="margin-top: 10px;">
+                    <h4>Comments:</h4>
+                    <template x-for="comment in postComments[post.id]" :key="comment.id">
+                        <div style="border-left: 2px solid #ddd; margin: 5px 0; padding-left: 10px;">
+                            <strong x-text="comment.name"></strong>
+                            <p x-text="comment.body"></p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+
 </body>
+
+</html>
 ```
 
 In this example:
@@ -84,7 +96,7 @@ In this example:
 
 ## Motivation
 
-This extension addresses the practical challenges of building modern web applications that need to integrate with existing JSON APIs while maintaining HTMX's hypermedia-driven philosophy.
+This extension addresses the practical challenges of integrating existing or thrid-party JSON APIs into HTMX+Alpine.js applications.
 
 ### Existing JSON APIs / 3rd Party APIs
 
