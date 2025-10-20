@@ -82,6 +82,40 @@ In this example:
 - Additional parameters can be passed via `hx-handle-json-params` (like the post ID for comments)
 - Alpine's reactivity updates the UI automatically when data changes
 
+## Examples
+
+### hx-handle-json vs using @htmx:after-request
+
+Here's a minimal example showing both approaches to handling JSON responses:
+
+```html
+<div hx-ext="alpine-interop" x-data="{ 
+    count: 0, 
+    handleCount(data) { this.count = data.count; }
+}">
+    <!-- Using hx-handle-json (this extension) -->
+    <button hx-get="/api/count" hx-handle-json="handleCount">
+        Update Count (Extension)
+    </button>
+    
+    <!-- Using Alpine's @htmx:after-request.stop -->
+    <button hx-get="/api/count" hx-swap="none"
+            @htmx:after-request.stop="handleCount(JSON.parse($event.detail.xhr.response))">
+        Update Count (Event Handler)
+    </button>
+    
+    <p x-text="'Count: ' + count"></p>
+</div>
+```
+
+**Key differences:**
+- `hx-handle-json`: 
+   - Clean, declarative syntax that automatically parses JSON and calls your method
+- `@htmx:after-request.stop=""`: 
+   - `hx-swap="none"`: required to disable swapping
+   - More verbose, requires manual JSON parsing and error handling
+   - Inline code, can become unwieldy for complex operations, or repetitive
+
 ## Attributes
 
 - `hx-handle-json`: Specifies the name of the Alpine.js method to call

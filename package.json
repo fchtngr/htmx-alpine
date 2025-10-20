@@ -1,6 +1,6 @@
 {
   "name": "htmx-ext-alpine-interop",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "main": "alpine-interop.js",
   "unpkg": "alpine-interop.js",
   "jsdelivr": "alpine-interop.js",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fchtngr/htmx-alpine.git"
+    "url": "git+https://github.com/fchtngr/htmx-ext-alpine-interop.git"
   },
   "dependencies": {
     "htmx.org": "^2.0.2"
