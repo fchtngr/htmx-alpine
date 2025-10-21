@@ -4,9 +4,12 @@ This extension provides quality-of-life utilities for integrating Alpine.js and 
 
 ## Features
 
-- **Dynamic HTMX Reprocessing**: Uses a `MutationObserver` to automatically process newly added HTMX elements created by Alpine.js directives like `x-for` and `x-show`, ensuring HTMX functionality works seamlessly with dynamic Alpine content.
+- **Dynamic HTMX Reprocessing**: Seamlessly initialize HTMX on dynamically inserted DOM elements.
   - Normally, when rendering parts of the DOM using Alpine templates, HTMX is already initialized, leaving newly added elements with `hx-` attributes unprocessed (e.g., `hx-get` won't trigger). This extension seamlessly calls `htmx.process()` on these newly added elements.
-- **JSON API Handling**: Automatically intercepts JSON responses from HTMX requests and routes them to Alpine.js methods for processing, enabling complex client-side data manipulation without page refreshes.
+  - Uses a `MutationObserver` to automatically process newly added HTMX elements created by Alpine.js directives like `x-for` and `x-show`, ensuring HTMX functionality works seamlessly with dynamic Alpine content.
+- **JSON API Handling**: Provides a convenient mechanism to intercept JSON API responses from HTMX requests and pass the parsed data to Alpine.js methods for processing, enabling complex client-side data manipulation without page refreshes.
+  - Use Alpine for client-side logic while retaining HTMX's AJAX request capabilities and features like response triggers.
+  - No need to use `fetch()` or other APIs from within Alpine.js; allows you to handle all requests using a single mechanism: **HTMX**.
 
 ## Install
 
