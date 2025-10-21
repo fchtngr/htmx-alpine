@@ -1,11 +1,12 @@
 # HTMX Alpine Interop Extension
 
-This extension enables seamless interoperability between HTMX and Alpine.js by allowing HTMX to invoke Alpine.js methods when receiving JSON responses.
+This extension provides quality-of-life utilities for integrating Alpine.js and HTMX, including automatic HTMX initialization on dynamically inserted elements (e.g., via Alpine's `x-for` or `x-show` directives) and a streamlined mechanism for HTMX JSON API calls that seamlessly pass data to Alpine handlers for client-side processing.
 
 ## Features
 
-- **JSON API Handling**: Automatically intercepts JSON responses from HTMX requests and routes them to Alpine.js methods for processing, enabling complex client-side data manipulation without page refreshes
-- **Dynamic HTMX Reprocessing**: Uses a MutationObserver to automatically process newly added HTMX elements created by Alpine.js directives like `x-for` and `x-show`, ensuring HTMX functionality works seamlessly with dynamic Alpine content
+- **Dynamic HTMX Reprocessing**: Uses a `MutationObserver` to automatically process newly added HTMX elements created by Alpine.js directives like `x-for` and `x-show`, ensuring HTMX functionality works seamlessly with dynamic Alpine content.
+  - Normally, when rendering parts of the DOM using Alpine templates, HTMX is already initialized, leaving newly added elements with `hx-` attributes unprocessed (e.g., `hx-get` won't trigger). This extension seamlessly calls `htmx.process()` on these newly added elements.
+- **JSON API Handling**: Automatically intercepts JSON responses from HTMX requests and routes them to Alpine.js methods for processing, enabling complex client-side data manipulation without page refreshes.
 
 ## Install
 
@@ -120,13 +121,6 @@ Here's a minimal example showing both approaches to handling JSON responses:
 
 - `hx-handle-json`: Specifies the name of the Alpine.js method to call
 - `hx-handle-json-params`: Comma-separated list of additional parameters to pass to the method
-
-## Notes
-
-- The extension only processes JSON responses (content-type includes 'application/json')
-- The Alpine.js method must be defined in the scope of the element or its ancestors
-- If no handler is found, HTMX proceeds with normal swapping
-- The extension prevents HTMX's default swap when a handler is present
 
 ## Motivation
 
