@@ -1,6 +1,6 @@
 {
   "name": "htmx-ext-alpine-interop",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "alpine-interop.js",
   "unpkg": "alpine-interop.js",
   "jsdelivr": "alpine-interop.js",
