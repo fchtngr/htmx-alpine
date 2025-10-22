@@ -45,7 +45,7 @@
           : [];
 
         // Parse JSON and invoke the handler with proper 'this' binding
-        const responseData = JSON.parse(text);
+        const responseData = text ? JSON.parse(text) : null;
         handler.call(scope, responseData, elt, ...params);
         return text; // Return original: handleSwap will block the swap
       } catch (error) {
