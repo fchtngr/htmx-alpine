@@ -26,7 +26,7 @@ describe("alpine-interop extension", function () {
     chai.assert.isDefined(htmx.defineExtension);
   });
 
-  it("handles JSON responses with hx-handle-json", function () {
+  it("handles JSON responses with htmx:jsonResponse event", function () {
     const mockPosts = [
       { id: 1, title: "Test Post 1", body: "Test body 1" },
       { id: 2, title: "Test Post 2", body: "Test body 2" },
@@ -38,38 +38,33 @@ describe("alpine-interop extension", function () {
       JSON.stringify(mockPosts),
     ]);
 
-    let handlerCalled = false;
+    let eventFired = false;
     let receivedData = null;
 
-    const div =
-      make(`<div hx-ext="alpine-interop" hx-get="/posts" hx-handle-json="handlePosts">
+    const div = make(`<div hx-ext="alpine-interop" hx-get="/posts">
       <button type="button">Load Posts</button>
     </div>`);
 
     chai.assert.isDefined(div, "make() should return a defined element");
 
-    // Mock Alpine data with handler
-    div._alpineData = {
-      posts: [],
-      handlePosts: function (data) {
-        handlerCalled = true;
-        receivedData = data;
-        this.posts = data;
-      },
-    };
+    // Listen for htmx:jsonResponse event
+    div.addEventListener("htmx:jsonResponse", function (event) {
+      eventFired = true;
+      receivedData = event.detail.data;
+    });
 
     div.querySelector("button").click();
     this.server.respond();
 
-    chai.assert.isTrue(handlerCalled, "Alpine handler should be called");
+    chai.assert.isTrue(eventFired, "htmx:jsonResponse event should be fired");
     chai.assert.deepEqual(
       receivedData,
       mockPosts,
-      "Handler should receive parsed JSON data"
+      "Event should contain parsed JSON data"
     );
   });
 
-  it("passes parameters with hx-handle-json-params", function () {
+  it("provides xhr object in event detail", function () {
     const mockComments = [
       { id: 1, name: "User 1", body: "Comment 1" },
       { id: 2, name: "User 2", body: "Comment 2" },
@@ -81,40 +76,33 @@ describe("alpine-interop extension", function () {
       JSON.stringify(mockComments),
     ]);
 
-    let handlerCalled = false;
+    let eventFired = false;
     let receivedData = null;
-    let receivedPostId = null;
+    let receivedXhr = null;
 
-    const div =
-      make(`<div hx-ext="alpine-interop" hx-get="/posts/1/comments" hx-handle-json="handleComments" hx-handle-json-params="1">
+    const div = make(`<div hx-ext="alpine-interop" hx-get="/posts/1/comments">
       <button type="button">Load Comments</button>
     </div>`);
 
     chai.assert.isDefined(div, "make() should return a defined element");
 
-    // Mock Alpine data with handler
-    div._alpineData = {
-      handleComments: function (data, element, postId) {
-        handlerCalled = true;
-        receivedData = data;
-        receivedPostId = postId;
-      },
-    };
+    // Listen for htmx:jsonResponse event
+    div.addEventListener("htmx:jsonResponse", function (event) {
+      eventFired = true;
+      receivedData = event.detail.data;
+      receivedXhr = event.detail.xhr;
+    });
 
     div.querySelector("button").click();
     this.server.respond();
 
-    chai.assert.isTrue(handlerCalled, "Alpine handler should be called");
+    chai.assert.isTrue(eventFired, "htmx:jsonResponse event should be fired");
     chai.assert.deepEqual(
       receivedData,
       mockComments,
-      "Handler should receive parsed JSON data"
+      "Event should contain parsed JSON data"
     );
-    chai.assert.equal(
-      receivedPostId,
-      "1",
-      "Handler should receive the postId parameter"
-    );
+    chai.assert.isDefined(receivedXhr, "Event should contain xhr object");
   });
 
   it("ignores non-JSON responses", function () {
@@ -124,32 +112,30 @@ describe("alpine-interop extension", function () {
       "<div>HTML Content</div>",
     ]);
 
-    let handlerCalled = false;
+    let eventFired = false;
 
     const div =
-      make(`<div hx-ext="alpine-interop" hx-get="/html-content" hx-handle-json="handleResponse">
+      make(`<div hx-ext="alpine-interop" hx-get="/html-content" hx-target="this">
       <button type="button">Load HTML</button>
     </div>`);
 
     chai.assert.isDefined(div, "make() should return a defined element");
 
-    // Mock Alpine data with handler
-    div._alpineData = {
-      handleResponse: function (data) {
-        handlerCalled = true;
-      },
-    };
+    // Listen for htmx:jsonResponse event
+    div.addEventListener("htmx:jsonResponse", function (event) {
+      eventFired = true;
+    });
 
     div.querySelector("button").click();
     this.server.respond();
 
     chai.assert.isFalse(
-      handlerCalled,
-      "Handler should not be called for non-JSON responses"
+      eventFired,
+      "htmx:jsonResponse event should not be fired for non-JSON responses"
     );
   });
 
-  it("prevents HTMX swap when handler is present", function () {
+  it("prevents HTMX swap for JSON responses by setting hx-swap='none'", function () {
     const mockData = { message: "test" };
 
     this.server.respondWith("GET", "/test", [
@@ -159,18 +145,11 @@ describe("alpine-interop extension", function () {
     ]);
 
     const div =
-      make(`<div hx-ext="alpine-interop" hx-get="/test" hx-handle-json="handleData" hx-target="this">
+      make(`<div hx-ext="alpine-interop" hx-get="/test" hx-target="this">
       <button type="button">Test</button>
     </div>`);
 
     chai.assert.isDefined(div, "make() should return a defined element");
-
-    // Mock Alpine data with handler
-    div._alpineData = {
-      handleData: function (data) {
-        // Handler does nothing, just prevents swap
-      },
-    };
 
     const originalContent = div.innerHTML;
     div.querySelector("button").click();
@@ -180,11 +159,18 @@ describe("alpine-interop extension", function () {
     chai.assert.equal(
       div.innerHTML,
       originalContent,
-      "Content should not change when handler prevents swap"
+      "Content should not change for JSON responses"
+    );
+
+    // Check that hx-swap was set to none
+    chai.assert.equal(
+      div.getAttribute("hx-swap"),
+      "none",
+      "hx-swap should be set to 'none' for JSON responses"
     );
   });
 
-  it("allows normal HTMX behavior when no handler is specified", function () {
+  it("allows normal HTMX behavior for non-JSON responses", function () {
     this.server.respondWith("GET", "/test", [
       200,
       { "Content-Type": "text/html" },
@@ -204,11 +190,11 @@ describe("alpine-interop extension", function () {
     chai.assert.include(
       div.innerHTML,
       "New Content",
-      "Normal HTMX swap should occur when no JSON handler is specified"
+      "Normal HTMX swap should occur for non-JSON responses"
     );
   });
 
-  it("traverses DOM to find Alpine scope", function () {
+  it("fires event that bubbles up the DOM", function () {
     const mockData = { result: "success" };
 
     this.server.respondWith("GET", "/scoped-test", [
@@ -217,58 +203,64 @@ describe("alpine-interop extension", function () {
       JSON.stringify(mockData),
     ]);
 
-    let handlerCalled = false;
+    let eventFiredOnParent = false;
+    let eventFiredOnChild = false;
 
-    // Create nested structure where handler is in parent scope
+    // Create nested structure
     const container = make(`<div>
-      <div hx-ext="alpine-interop" hx-get="/scoped-test" hx-handle-json="handleData">
+      <div hx-ext="alpine-interop" hx-get="/scoped-test">
         <button type="button">Test</button>
       </div>
     </div>`);
 
     chai.assert.isDefined(container, "make() should return a defined element");
 
-    // Mock Alpine data on container (parent scope)
-    container._alpineData = {
-      handleData: function (data) {
-        handlerCalled = true;
-      },
-    };
+    const child = container.querySelector("[hx-ext]");
+
+    // Listen on both parent and child
+    container.addEventListener("htmx:jsonResponse", function (event) {
+      eventFiredOnParent = true;
+    });
+
+    child.addEventListener("htmx:jsonResponse", function (event) {
+      eventFiredOnChild = true;
+    });
 
     container.querySelector("button").click();
     this.server.respond();
 
     chai.assert.isTrue(
-      handlerCalled,
-      "Handler should be found by traversing up the DOM"
+      eventFiredOnChild,
+      "Event should fire on the element with hx-get"
+    );
+    chai.assert.isTrue(
+      eventFiredOnParent,
+      "Event should bubble up to parent elements"
     );
   });
 
-  it("processes dynamically added HTMX elements when extension is loaded", function () {
+  it("processes dynamically added HTMX elements", function (done) {
     this.server.respondWith("GET", "/dynamic-test", [
       200,
       { "Content-Type": "application/json" },
       JSON.stringify({ message: "dynamic success" }),
     ]);
 
-    let handlerCalled = false;
+    let eventFired = false;
 
     // Create container with extension
     const container = make(`<div hx-ext="alpine-interop"></div>`);
     chai.assert.isDefined(container, "Container should be created");
 
-    // Mock Alpine data
-    container._alpineData = {
-      handleDynamic: function (data) {
-        handlerCalled = true;
-      },
-    };
-
     // Dynamically create and add button with HTMX attributes
     const button = document.createElement("button");
     button.setAttribute("hx-get", "/dynamic-test");
-    button.setAttribute("hx-handle-json", "handleDynamic");
     button.textContent = "Dynamic Button";
+
+    // Listen for event on the button
+    button.addEventListener("htmx:jsonResponse", function (event) {
+      eventFired = true;
+    });
 
     // Append to container (this should trigger MutationObserver)
     container.appendChild(button);
@@ -279,37 +271,35 @@ describe("alpine-interop extension", function () {
       this.server.respond();
 
       chai.assert.isTrue(
-        handlerCalled,
-        "Handler should be called for dynamically added HTMX element when extension is loaded"
+        eventFired,
+        "Event should fire for dynamically added HTMX element"
       );
-    }, 10);
+      done();
+    }, 50);
   });
 
-  it("does not process dynamically added HTMX elements when extension is not loaded", function () {
+  it("does not fire htmx:jsonResponse event when extension is not loaded", function (done) {
     this.server.respondWith("GET", "/dynamic-test-no-ext", [
       200,
       { "Content-Type": "application/json" },
       JSON.stringify({ message: "no extension" }),
     ]);
 
-    let handlerCalled = false;
+    let eventFired = false;
 
     // Create container WITHOUT extension
     const container = make(`<div></div>`);
     chai.assert.isDefined(container, "Container should be created");
 
-    // Mock Alpine data (but extension won't find it)
-    container._alpineData = {
-      handleDynamic: function (data) {
-        handlerCalled = true;
-      },
-    };
-
     // Dynamically create and add button with HTMX attributes
     const button = document.createElement("button");
     button.setAttribute("hx-get", "/dynamic-test-no-ext");
-    button.setAttribute("hx-handle-json", "handleDynamic");
     button.textContent = "Dynamic Button";
+
+    // Listen for event
+    button.addEventListener("htmx:jsonResponse", function (event) {
+      eventFired = true;
+    });
 
     // Append to container
     container.appendChild(button);
@@ -320,9 +310,10 @@ describe("alpine-interop extension", function () {
       this.server.respond();
 
       chai.assert.isFalse(
-        handlerCalled,
-        "Handler should not be called for dynamically added HTMX element when extension is not loaded"
+        eventFired,
+        "htmx:jsonResponse event should not fire when extension is not loaded"
       );
-    }, 10);
+      done();
+    }, 50);
   });
 });
