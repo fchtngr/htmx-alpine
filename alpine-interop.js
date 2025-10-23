@@ -1,97 +1,104 @@
 // ================================================================
 // HTMX Extension: alpine-interop
-// Enables HTMX to call Alpine.js component methods
-// on JSON responses using hx-handle-json attribute
+// Dispatches custom events for JSON responses to be handled by Alpine.js
+// Prevents content swapping for JSON responses by setting hx-swap="none"
 // Watches for dynamically added HTMX elements to automatically call htmx.process on them
 // ===================================================================
 (function () {
+  // Debug mode - set to true for verbose logging
+  const DEBUG = false;
+
+  function debugLog(...args) {
+    if (DEBUG) {
+      console.debug("[alpine-interop]", ...args);
+    }
+  }
+
+  debugLog("Extension loading");
+
   htmx.defineExtension("alpine-interop", {
     transformResponse: function (text, xhr, elt) {
+      debugLog("transformResponse called", {
+        contentType: xhr.getResponseHeader("content-type"),
+        elementTag: elt.tagName,
+        elementId: elt.id,
+        textLength: text ? text.length : 0
+      });
+
       // Only proceed for JSON responses
       const contentType = xhr.getResponseHeader("content-type") || "";
       if (!contentType.includes("application/json")) {
-        return text;
-      }
-
-      // Get the handler name from the attribute
-      const handlerName = elt.getAttribute("hx-handle-json");
-      if (!handlerName) {
+        debugLog("Not a JSON response, skipping");
         return text;
       }
 
       try {
-        // Traverse up the DOM to find the nearest Alpine scope with the handler
-        let current = elt;
-        let handler = null;
-        let scope = null;
-        while (current && current !== document.body) {
-          const alpineData = Alpine.$data(current);
-          if (alpineData && typeof alpineData[handlerName] === "function") {
-            handler = alpineData[handlerName];
-            scope = alpineData;
-            break;
-          }
-          current = current.parentElement;
-        }
+        // Parse JSON data
+        debugLog("Parsing JSON response");
+        const jsonData = text ? JSON.parse(text) : null;
 
-        if (!handler || !scope) {
-          return text;
-        }
+        debugLog("Creating and dispatching htmx:jsonResponse event", jsonData);
+        htmx.trigger(elt, 'htmx:jsonResponse', { data: jsonData, xhr: xhr });
 
-        // Parse params from hx-handle-json-params (comma-separated, trimmed strings)
-        const paramsAttr = elt.getAttribute("hx-handle-json-params");
-        const params = paramsAttr
-          ? paramsAttr.split(",").map((p) => p.trim())
-          : [];
+        // Set hx-swap="none" to prevent content swapping
+        debugLog("Setting hx-swap='none' to prevent content swapping");
+        elt.setAttribute("hx-swap", "none");
 
-        // Parse JSON and invoke the handler with proper 'this' binding
-        const responseData = text ? JSON.parse(text) : null;
-        handler.call(scope, responseData, elt, ...params);
-        return text; // Return original: handleSwap will block the swap
+        return text;
       } catch (error) {
-        console.error("Error handling JSON response:", error);
+        console.error("[alpine-interop] Error handling JSON response:", error);
         return text; // Fallback to original on error
       }
     },
-    handleSwap: function (swapStyle, target, fragment, settleInfo) {
-      const handlerName = target.getAttribute("hx-handle-json");
-      if (handlerName) {
-        return true; // Prevent default swap
-      }
-      return false; // Allow normal swap
-    },
     init: function (api) {
+      debugLog("Initializing extension");
+
       // Auto-process HTMX for dynamically added DOM elements (e.g., via Alpine x-for/transitions)
       document.addEventListener("DOMContentLoaded", () => {
+        debugLog("Setting up MutationObserver for dynamic elements");
+
         const observer = new MutationObserver((mutations) => {
           mutations.forEach((mutation) => {
             if (mutation.addedNodes.length) {
+              debugLog(`Processing ${mutation.addedNodes.length} added nodes`);
+
               mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
-                  if (
-                    node.matches(
-                      "[hx-get], [hx-post], [hx-put], [hx-delete], [hx-patch]"
-                    )
-                  ) {
+                  const isHtmxElement = node.matches(
+                    "[hx-get], [hx-post], [hx-put], [hx-delete], [hx-patch]"
+                  );
+
+                  if (isHtmxElement) {
+                    debugLog("Processing HTMX element:", node.tagName, node.id);
                     htmx.process(node);
                   }
-                  node
-                    .querySelectorAll(
-                      "[hx-get], [hx-post], [hx-put], [hx-delete], [hx-patch]"
-                    )
-                    .forEach((el) => {
+
+                  const nestedElements = node.querySelectorAll(
+                    "[hx-get], [hx-post], [hx-put], [hx-delete], [hx-patch]"
+                  );
+
+                  if (nestedElements.length > 0) {
+                    debugLog(`Processing ${nestedElements.length} nested HTMX elements`);
+                    nestedElements.forEach((el) => {
                       htmx.process(el);
                     });
+                  }
                 }
               });
             }
           });
         });
+
+        debugLog("Starting MutationObserver");
         observer.observe(document.body, {
           childList: true,
           subtree: true,
         });
       });
+
+      debugLog("Extension initialization complete");
     },
   });
+
+  debugLog("Extension loaded successfully");
 })();
